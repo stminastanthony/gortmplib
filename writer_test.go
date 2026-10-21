@@ -9,6 +9,7 @@ import (
 
 	"github.com/abema/go-mp4"
 	"github.com/bluenviron/mediacommon/v2/pkg/codecs/flac"
+	"github.com/bluenviron/mediacommon/v2/pkg/codecs/h265"
 	"github.com/bluenviron/mediacommon/v2/pkg/codecs/mpeg4audio"
 	"github.com/bluenviron/mediacommon/v2/pkg/codecs/opus"
 	"github.com/stretchr/testify/require"
@@ -527,6 +528,7 @@ func TestWriter(t *testing.T) {
 				require.Equal(t, &message.VideoExFramesX{
 					ChunkStreamID:   message.VideoChunkStreamID,
 					MessageStreamID: 0x1000000,
+					FrameType:       message.VideoFrameTypeInterFrame,
 					FourCC:          message.FourCCAV1,
 					Payload:         []byte{0x12, 0x0, 0x3, 0x1, 0x2},
 				}, msg)
@@ -558,6 +560,7 @@ func TestWriter(t *testing.T) {
 				require.Equal(t, &message.VideoExFramesX{
 					ChunkStreamID:   message.VideoChunkStreamID,
 					MessageStreamID: 0x1000000,
+					FrameType:       message.VideoFrameTypeInterFrame,
 					FourCC:          message.FourCCVP9,
 					Payload:         []byte{0x1, 0x2},
 				}, msg)
@@ -630,8 +633,22 @@ func TestWriter(t *testing.T) {
 				require.Equal(t, &message.VideoExFramesX{
 					ChunkStreamID:   message.VideoChunkStreamID,
 					MessageStreamID: 0x1000000,
+					FrameType:       message.VideoFrameTypeInterFrame,
 					FourCC:          message.FourCCHEVC,
 					Payload:         []byte{0, 0, 0, 2, 1, 2},
+				}, msg)
+
+				err = w.WriteH265(tracks[0], 0, 0, [][]byte{{byte(h265.NALUType_IDR_W_RADL) << 1, 1, 3}})
+				require.NoError(t, err)
+
+				msg, err = mrw.Read()
+				require.NoError(t, err)
+				require.Equal(t, &message.VideoExFramesX{
+					ChunkStreamID:   message.VideoChunkStreamID,
+					MessageStreamID: 0x1000000,
+					FrameType:       message.VideoFrameTypeKeyFrame,
+					FourCC:          message.FourCCHEVC,
+					Payload:         []byte{0, 0, 0, 3, byte(h265.NALUType_IDR_W_RADL) << 1, 1, 3},
 				}, msg)
 
 			case "h265 no params":
@@ -654,6 +671,7 @@ func TestWriter(t *testing.T) {
 				require.Equal(t, &message.VideoExFramesX{
 					ChunkStreamID:   message.VideoChunkStreamID,
 					MessageStreamID: 0x1000000,
+					FrameType:       message.VideoFrameTypeInterFrame,
 					FourCC:          message.FourCCHEVC,
 					Payload:         []byte{0, 0, 0, 2, 1, 2},
 				}, msg)
